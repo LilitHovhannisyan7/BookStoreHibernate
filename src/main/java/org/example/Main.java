@@ -1,6 +1,8 @@
 package org.example;
 import jakarta.persistence.*;
 import org.hibernate.*;
+
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
@@ -10,7 +12,7 @@ import java.util.Scanner;
 class Book {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column(name = "book_id")
+    @Column(name = "bookid")
     private Long id;
 
     @Column(name = "title")
@@ -25,9 +27,13 @@ class Book {
     @Column(name = "price")
     private Double price;
 
-    @Column(name = "quantity_in_stock")
+    @Column(name = "quantityinstock")
     private Integer quantityInStock;
 
+    public Book()
+    {
+
+    }
 
     public Book(Long id, String title, String author, String genre, Double price, Integer quantity_in_stock) {
         this.id = id;
@@ -91,7 +97,7 @@ class Book {
 class Customer {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column(name = "customer_id")
+    @Column(name = "customerid")
     private Long id;
 
     @Column(name = "name")
@@ -103,6 +109,10 @@ class Customer {
     @Column(name = "phone")
     private String phone;
 
+    public Customer()
+    {
+
+    }
     public Customer(Long id, String name, String email, String phone) {
         this.id = id;
         this.name = name;
@@ -149,40 +159,44 @@ class Customer {
 class Sale {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    @Column(name = "sale_id")
+    @Column(name = "saleid")
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "book_id", nullable = false)
-    private Integer bookId;
+    @JoinColumn(name = "bookid", nullable = false)
+    private Book book;
 
     @ManyToOne
-    @JoinColumn(name = "customer_id", nullable = false)
-    private Integer customerId;
+    @JoinColumn(name = "customerid", nullable = false)
+    private Customer customer;
 
-    @Column(name = "date_of_sale")
+    @Column(name = "dateofsale")
     private Date dateOfSale;
 
-    @Column(name = "quantity_sold")
+    @Column(name = "quantitysold")
     private Integer quantitySold;
 
-    @Column(name = "total_price")
+    @Column(name = "totalprice")
     private Double totalPrice;
 
 
+    public Sale()
+    {
+
+    }
     public Sale(Sale sale)
     {
         this.totalPrice = sale.totalPrice;
         this.dateOfSale = sale.dateOfSale;
         this.quantitySold = sale.quantitySold;
-        this.customerId = sale.customerId;
-        this.bookId = sale.bookId;
+        this.customer = sale.customer;
+        this.book = sale.book;
         this.id = sale.id;
     }
-    public Sale(Long id, Integer bookId, Integer customerId, Date dateOfSale, Integer quantitySold, Double totalPrice) {
+    public Sale(Long id, Book book, Customer customer, Date dateOfSale, Integer quantitySold, Double totalPrice) {
         this.id = id;
-        this.bookId = bookId;
-        this.customerId = customerId;
+        this.book = book;
+        this.customer = customer;
         this.dateOfSale = dateOfSale;
         this.quantitySold = quantitySold;
         this.totalPrice = totalPrice;
@@ -192,12 +206,12 @@ class Sale {
         return id;
     }
 
-    public Integer getBookId() {
-        return bookId;
+    public Book getBook() {
+        return book;
     }
 
-    public Integer getCustomerId() {
-        return customerId;
+    public Customer getCustomer() {
+        return customer;
     }
 
     public Date getDateOfSale() {
@@ -224,12 +238,12 @@ class Sale {
         this.dateOfSale = dateOfSale;
     }
 
-    public void setCustomerId(Integer customerId) {
-        this.customerId = customerId;
+    public void setCustomer(Customer customer) {
+        this.customer = customer;
     }
 
-    public void setBookId(Integer bookId) {
-        this.bookId = bookId;
+    public void setBook(Book book) {
+        this.book = book;
     }
 
     public void setId(Long id) {
@@ -243,23 +257,41 @@ public class Main
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Transaction transaction = session.beginTransaction();
 
-            Book newBook = session.get(Book.class, book.getId());
-//            book.setTitle(book.getTitle());
-//            book.setAuthor(book.getAuthor());
-//            book.setGenre(book.getGenre());
-//            book.setPrice(book.getPrice());
-//            book.setQuantityInStock(book.getQuantityInStock());
-            session.merge(newBook);
-            transaction.commit();
+            // Get the existing book from the database
+            Book existingBook = session.get(Book.class, book.getId());
+
+            if (existingBook != null) {
+                // Update the existingBook with the values from the input book
+                existingBook.setTitle(book.getTitle());
+                existingBook.setAuthor(book.getAuthor());
+                existingBook.setGenre(book.getGenre());
+                existingBook.setPrice(book.getPrice());
+                existingBook.setQuantityInStock(book.getQuantityInStock());
+
+                // Use merge to update the existingBook
+                session.merge(existingBook);
+
+                transaction.commit();
+            } else {
+                System.out.println("Book not found with ID: " + book.getId());
+            }
         }
+
     }
     public static List<Book> getBooksByGenre(String genre) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
-            Query query = session.createQuery("FROM Book WHERE genre = :genre", Book.class);
-            query.setParameter("genre", genre);
-            return query.getResultList();
+            try {
+                Query query = session.createQuery("FROM Book WHERE LOWER(genre) = LOWER(:genre)", Book.class);
+                query.setParameter("genre", genre.toLowerCase());
+                return query.getResultList();
+            } catch (Exception e) {
+                e.printStackTrace();
+                return Collections.emptyList(); // Return an empty list in case of an exception
+            }
         }
     }
+
+
     public static List<Book> getBooksByAuthor(String author) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Query query = session.createQuery("FROM Book WHERE author = :author", Book.class);
@@ -272,14 +304,28 @@ public class Main
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Transaction transaction = session.beginTransaction();
 
-            Customer newCustomer = session.get(Customer.class, customer.getId());
-//            customer.setName(customer.getName());
-//            customer.setEmail(customer.getEmail());
-//            customer.setPhone(customer.getPhone());
-            session.merge(newCustomer);
-            transaction.commit();
+            // Retrieve the existing customer from the database
+            Customer existingCustomer = session.get(Customer.class, customer.getId());
+
+            // Update the properties of the existing customer with the new values
+            if(existingCustomer != null) {
+                existingCustomer.setName(customer.getName());
+                existingCustomer.setEmail(customer.getEmail());
+                existingCustomer.setPhone(customer.getPhone());
+
+                // Merge the updated customer back into the session
+                session.merge(existingCustomer);
+
+
+                // Commit the transaction
+                transaction.commit();
+            }
+            else {
+                System.out.println("Customer not found with ID: " + customer.getId());
+            }
         }
     }
+
     public static List<Sale> getCustomerPurchaseHistory(Long customerId) {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Query query = session.createQuery("FROM Sale WHERE customer.id = :customerId", Sale.class);
@@ -291,17 +337,14 @@ public class Main
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Transaction transaction = session.beginTransaction();
 
-            Book book = session.get(Book.class, sale.getBookId());
-            Customer customer = session.get(Customer.class, sale.getCustomerId());
+            Book book = session.get(Book.class, sale.getBook().getId());
+            Customer customer = session.get(Customer.class, sale.getCustomer().getId());
 
             Sale newSale = new Sale(sale);
-//            sale.setBook(book);
-//            sale.setCustomer(customer);
-//            sale.setDateOfSale(dateOfSale);
-//            sale.setQuantitySold(quantitySold);
-//            sale.setTotalPrice(totalPrice);
+            newSale.setBook(book);  // Set the Book entity
+            newSale.setCustomer(customer);  // Set the Customer entity
 
-            session.merge(sale);
+            session.save(newSale);  // Use save instead of merge for new entities
             transaction.commit();
         }
     }
@@ -478,7 +521,7 @@ public class Main
         } else {
             System.out.println("Purchase history for the given customer:");
             for (Sale sale : purchaseHistory) {
-                System.out.println("Book ID: " + sale.getBookId() + ", Quantity Sold: " + sale.getQuantitySold() +
+                System.out.println("Book ID: " + sale.getBook() + ", Quantity Sold: " + sale.getQuantitySold() +
                         ", Total Price: " + sale.getTotalPrice() + ", Date of Sale: " + sale.getDateOfSale());
             }
         }
@@ -486,10 +529,10 @@ public class Main
 
     private static void process_new_sale(Scanner scanner) {
         System.out.println("Enter the Book ID for the new sale:");
-        Integer bookId = scanner.nextInt();
+        Long bookId = scanner.nextLong();
 
         System.out.println("Enter the Customer ID for the new sale:");
-        Integer customerId = scanner.nextInt();
+        Long customerId = scanner.nextLong();
 
         System.out.println("Enter the quantity sold:");
         Integer quantitySold = scanner.nextInt();
@@ -497,10 +540,18 @@ public class Main
         System.out.println("Enter the total price:");
         Double totalPrice = scanner.nextDouble();
 
-        Sale newSale = new Sale(null, bookId, customerId, new Date(), quantitySold, totalPrice);
+        // Retrieve the Book and Customer entities from the database
+        Book book = HibernateUtil.getSessionFactory().openSession().get(Book.class, bookId);
+        Customer customer = HibernateUtil.getSessionFactory().openSession().get(Customer.class, customerId);
+
+        // Create a new Sale instance
+        Sale newSale = new Sale(null, book, customer, new Date(), quantitySold, totalPrice);
+
+        // Process the new sale
         processNewSale(newSale);
         System.out.println("New sale processed successfully.");
     }
+
 
     private static void calculate_total_revenue_by_genre(Scanner scanner) {
         System.out.println("Enter the genre to calculate total revenue:");

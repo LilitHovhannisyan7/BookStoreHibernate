@@ -3,7 +3,7 @@
     <session-factory>
         <!-- Database connection properties -->
         <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
-        <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/bookstoredb</property>
+        <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/postgres</property>
         <property name="hibernate.connection.username">postgres</property>
         <property name="hibernate.connection.password">4652343L</property>
 
@@ -15,14 +15,16 @@
         <!-- <property name="hibernate.current_session_context_class">thread</property>-->
 
         <!-- Echo all executed SQL to stdout -->
-        <property name="show_sql">true</property>
+
+        <property name="hibernate.show_sql">true</property>
 
         <!-- Drop and re-create the database schema on startup -->
         <property name="hibernate.hbm2ddl.auto">update</property>
 
         <!-- Mapping annotated class -->
-        <mapping class="Book"/>
-        <mapping class="Customer"/>
-        <mapping class="Sale"/>
+        <mapping class="org.example.Book"/>
+        <mapping class="org.example.Customer"/>
+        <mapping class="org.example.Sale"/>
+
     </session-factory>
 </hibernate-configuration>

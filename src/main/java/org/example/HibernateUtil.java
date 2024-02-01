@@ -1,5 +1,3 @@
-
-
 package org.example;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.Metadata;
